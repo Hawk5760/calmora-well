@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Calmora Design System - Soul Garden Theme
+All colors MUST be HSL for consistency across light/dark modes
+*/
+
+@layer base {
+  :root {
+    /* Soul Garden Color Palette */
+    --background: 135 50% 98%;
+    --foreground: 160 15% 25%;
+    
+    /* Nature-inspired primary colors */
+    --primary: 145 40% 45%;        /* Sage green */
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 145 60% 65%;   /* Lighter sage */
+    
+    /* Calming secondary colors */
+    --secondary: 280 35% 85%;      /* Soft lavender */
+    --secondary-foreground: 160 15% 25%;
+    
+    /* Warm accent colors */
+    --accent: 340 40% 80%;         /* Soft pink */
+    --accent-foreground: 160 15% 25%;
+    
+    /* UI Elements */
+    --card: 135 50% 97%;
+    --card-foreground: 160 15% 25%;
+    --popover: 135 50% 97%;
+    --popover-foreground: 160 15% 25%;
+    --muted: 135 30% 92%;
+    --muted-foreground: 160 10% 45%;
+    --border: 135 25% 88%;
+    --input: 135 25% 88%;
+    --ring: 145 40% 45%;
+    
+    /* Destructive colors */
+    --destructive: 0 60% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Soul Garden Gradients */
+    --gradient-soul: linear-gradient(135deg, hsl(145 60% 65%), hsl(200 70% 75%), hsl(280 50% 80%));
+    --gradient-calm: linear-gradient(180deg, hsl(135 50% 98%), hsl(145 40% 94%));
+    --gradient-forest: linear-gradient(45deg, hsl(145 40% 45%), hsl(120 50% 55%));
+    --gradient-twilight: linear-gradient(135deg, hsl(280 35% 85%), hsl(340 40% 80%));
+    
+    /* Shadows & Effects */
+    --shadow-soft: 0 4px 20px hsl(145 40% 45% / 0.1);
+    --shadow-glow: 0 0 30px hsl(145 60% 65% / 0.3);
+    --shadow-magical: 0 8px 32px hsl(280 35% 85% / 0.4);
+    
+    /* Animations */
+    --transition-gentle: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    --radius: 1rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark mode Soul Garden */
+    --background: 160 20% 8%;
+    --foreground: 135 50% 95%;
+    
+    --primary: 145 60% 65%;
+    --primary-foreground: 160 20% 8%;
+    --primary-glow: 145 70% 75%;
+    
+    --secondary: 280 40% 25%;
+    --secondary-foreground: 135 50% 95%;
+    
+    --accent: 340 50% 35%;
+    --accent-foreground: 135 50% 95%;
+    
+    --card: 160 20% 12%;
+    --card-foreground: 135 50% 95%;
+    --popover: 160 20% 12%;
+    --popover-foreground: 135 50% 95%;
+    --muted: 160 15% 18%;
+    --muted-foreground: 135 20% 65%;
+    --border: 160 15% 20%;
+    --input: 160 15% 20%;
+    --ring: 145 60% 65%;
+    
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 135 50% 95%;
+    
+    /* Dark mode gradients */
+    --gradient-soul: linear-gradient(135deg, hsl(145 60% 35%), hsl(200 50% 45%), hsl(280 40% 50%));
+    --gradient-calm: linear-gradient(180deg, hsl(160 20% 8%), hsl(145 25% 15%));
+    --gradient-forest: linear-gradient(45deg, hsl(145 40% 25%), hsl(120 40% 35%));
+    --gradient-twilight: linear-gradient(135deg, hsl(280 40% 25%), hsl(340 50% 35%));
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-medium;
+    background: var(--gradient-calm);
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  /* Soul Garden Gradient Classes */
+  .gradient-soul {
+    background: var(--gradient-soul);
+  }
+  
+  .gradient-calm {
+    background: var(--gradient-calm);
+  }
+  
+  .gradient-forest {
+    background: var(--gradient-forest);
+  }
+  
+  .gradient-twilight {
+    background: var(--gradient-twilight);
+  }
+  
+  /* Text gradient utilities */
+  .text-gradient-soul {
+    background: var(--gradient-soul);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  /* Magical Effects */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .shadow-magical {
+    box-shadow: var(--shadow-magical);
+  }
+  
+  /* Gentle Animations */
+  .transition-gentle {
+    transition: var(--transition-gentle);
+  }
+  
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+  
+  /* Nature-inspired animations */
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .grow {
+    animation: grow 2s ease-out forwards;
+  }
+  
+  .bloom {
+    animation: bloom 1.5s ease-out forwards;
+  }
+}
+
+@layer components {
+  /* Custom keyframes for nature animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes grow {
+    0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  
+  @keyframes bloom {
+    0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+    50% { transform: scale(1.1) rotate(5deg); opacity: 0.8; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+}
