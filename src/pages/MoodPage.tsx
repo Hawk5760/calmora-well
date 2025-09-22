@@ -421,7 +421,7 @@ export const MoodPage = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4 text-gradient-soul">Mood detector </h1>
           <p className="text-xl text-muted-foreground">
-            Share your thoughts and I'll understand how you're feeling, then we can chat like friends 💝
+            Share your you're feeling, then we can chat like friends 💝
           </p>
         </div>
 
@@ -439,7 +439,7 @@ export const MoodPage = () => {
                 </Button>
               </div>
               
-              <Textarea value={userInput} onChange={e => setUserInput(e.target.value)} placeholder="Tell me anything that's on your mind... your day, your feelings, your thoughts, your dreams, your worries... I'm here to listen and understand 💙" className="bg-background/50 border-border/50 focus:border-primary transition-gentle min-h-40" rows={8} />
+              <Textarea value={userInput} onChange={e => setUserInput(e.target.value)} placeholder="Tell me anything that's on your mind..." className="bg-background/50 border-border/50 focus:border-primary transition-gentle min-h-40" rows={8} />
               
               {voiceIsRecording && <div className="mt-4 flex items-center justify-center gap-2 text-primary">
                   <div className="animate-pulse w-3 h-3 bg-red-500 rounded-full"></div>

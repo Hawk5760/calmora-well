@@ -210,7 +210,7 @@ export const AuthPage = () => {
                         Signing in...
                       </>
                     ) : (
-                      'Continue with Google'
+                      'Continue with '
                     )}
                   </Button>
 

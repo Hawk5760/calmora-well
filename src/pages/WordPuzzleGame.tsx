@@ -72,27 +72,27 @@ export const WordPuzzleGame = () => {
       loadGameStats();
       generateNewPuzzle();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, gameStarted]);
 
   const loadGameStats = async () => {
     if (!user) return;
 
     try {
-      // Get or create user game stats
       let { data: stats, error } = await supabase
         .from('user_game_stats')
         .select('*')
         .eq('user_id', user.id)
         .single();
 
-      if (error && error.code === 'PGRST116') {
-        // Create stats if they don't exist
+      // If row doesn't exist, insert a new one (PostgREST 'not found' code or similar)
+      if (error && (error.code === 'PGRST116' || error.message?.includes('Results contain 0 rows'))) {
         const { data: newStats, error: createError } = await supabase
           .from('user_game_stats')
           .insert({ user_id: user.id })
           .select()
           .single();
-        
+
         if (!createError && newStats) {
           stats = newStats;
         }
@@ -106,21 +106,6 @@ export const WordPuzzleGame = () => {
     }
   };
 
-  const generateNewPuzzle = () => {
-    // Adaptive difficulty based on performance
-    const availablePuzzles = puzzleWords.filter(p => {
-      if (gameStats.total_puzzles_solved < 3) return p.difficulty === 'easy';
-      if (gameStats.total_puzzles_solved < 8) return p.difficulty !== 'hard';
-      return true;
-    });
-    
-    const randomPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-    setCurrentPuzzle(randomPuzzle);
-    setUserInput("");
-    setAttempts(0);
-    setStartTime(Date.now());
-  };
-
   const scrambleWord = (word: string) => {
     const letters = word.split('');
     for (let i = letters.length - 1; i > 0; i--) {
@@ -130,102 +115,36 @@ export const WordPuzzleGame = () => {
     return letters.join('');
   };
 
-  const checkAnswer = async () => {
-    if (!currentPuzzle || !user) return;
-    
-    const newAttempts = attempts + 1;
-    setAttempts(newAttempts);
-    
-    if (userInput.toUpperCase() === currentPuzzle.word) {
-      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-      
-      try {
-        setIsLoading(true);
-        
-        // Create game session record
-        const { data: session, error: sessionError } = await supabase
-          .from('game_sessions')
-          .insert({
-            user_id: user.id,
-            puzzle_word: currentPuzzle.word,
-            difficulty: currentPuzzle.difficulty,
-            category: currentPuzzle.category,
-            time_taken: timeTaken,
-            attempts: newAttempts,
-            solved: true
-          })
-          .select()
-          .single();
+  const generateNewPuzzle = () => {
+    // Adaptive difficulty based on performance
+    const availablePuzzles = puzzleWords.filter(p => {
+      if (gameStats.total_puzzles_solved < 3) return p.difficulty === 'easy';
+      if (gameStats.total_puzzles_solved < 8) return p.difficulty !== 'hard';
+      return true;
+    });
 
-        if (sessionError) {
-          console.error('Error creating session:', sessionError);
-        } else if (session) {
-          setGameSessionId(session.id);
-        }
-
-        // Call AI analysis function
-        const { data, error } = await supabase.functions.invoke('puzzle-ai-analysis', {
-          body: {
-            gameSessionId: session?.id,
-            timeTaken,
-            attempts: newAttempts,
-            difficulty: currentPuzzle.difficulty,
-            category: currentPuzzle.category
-          }
-        });
-
-        if (error) {
-          console.error('AI analysis error:', error);
-          toast.error("Analysis failed, but puzzle solved!");
-        } else if (data?.report) {
-          setStressReport(data.report);
-          
-          // Check for new achievements
-          if (data.analysis?.suggestedBadges) {
-            await checkAndUnlockAchievements(data.analysis.suggestedBadges, timeTaken, newAttempts);
-          }
-          
-          toast.success("Puzzle Solved!", {
-            description: `Great job! The word was "${currentPuzzle.word}"`
-          });
-          
-          // Show progress report after a delay
-          setTimeout(() => {
-            setShowReport(true);
-          }, 1500);
-        }
-
-        // Reload stats
-        await loadGameStats();
-        
-      } catch (error) {
-        console.error('Error processing answer:', error);
-        toast.error("Something went wrong, please try again");
-      } finally {
-        setIsLoading(false);
-      }
-      
-    } else {
-      toast.error("Not quite right", {
-        description: "Try again! Check the hint for guidance."
-      });
-    }
+    const randomPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
+    // Always create a fresh scrambled version to avoid predictable scramble
+    const scrambled = scrambleWord(randomPuzzle.word);
+    setCurrentPuzzle({ ...randomPuzzle, scrambled });
+    setUserInput("");
+    setAttempts(0);
+    setStartTime(Date.now());
   };
 
   const checkAndUnlockAchievements = async (suggestedBadges: string[], timeTaken: number, attempts: number) => {
     if (!user) return;
 
     const newAchievements = [];
-    
-    // Check for specific achievements
+
     if (gameStats.total_puzzles_solved === 0) {
       newAchievements.push(achievements.find(a => a.id === 'first_solve'));
     }
-    
+
     if (timeTaken < 30 && attempts === 1) {
       newAchievements.push(achievements.find(a => a.id === 'quick_thinker'));
     }
-    
+
     if (gameStats.current_streak >= 7) {
       newAchievements.push(achievements.find(a => a.id === 'consistent_player'));
     }
@@ -241,16 +160,171 @@ export const WordPuzzleGame = () => {
             achievement_description: achievement!.description,
             achievement_icon: achievement!.icon
           });
-        
+
         toast.success("Achievement Unlocked!", {
           description: `${achievement!.icon} ${achievement!.name}`
         });
       } catch (error) {
-        // Achievement might already exist
-        console.log('Achievement already unlocked:', achievement!.id);
+        console.log('Achievement already unlocked or insert failed:', achievement!.id, error);
       }
     }
   };
+
+  const checkAnswer = async () => {
+  if (!currentPuzzle) return;
+
+  const answer = userInput.trim().toUpperCase();
+  const newAttempts = attempts + 1;
+  setAttempts(newAttempts);
+
+  if (answer !== currentPuzzle.word) {
+    toast.error("Not quite right", { description: "Try again!" });
+    return;
+  }
+
+  // quick visual feedback
+  toast.success("Puzzle Solved! Saving...", { description: `The word was "${currentPuzzle.word}"` });
+  setIsLoading(true);
+
+  // Helper to set a safe fallback report and show it
+  const showFallbackReport = (reason?: string) => {
+    console.warn('[checkAnswer] showing fallback report', reason);
+    setStressReport({
+      stress_level: 'moderate',
+      weekly_score: 70,
+      coping_tip: 'Nice job — take a few breaths and try another one.',
+      ai_analysis: reason ? `Fallback because: ${reason}` : 'Fallback report: AI unavailable.',
+      badges: []
+    });
+    setTimeout(() => setShowReport(true), 300);
+  };
+
+  try {
+    // If user is missing (testing), skip supabase
+    if (!user) {
+      showFallbackReport('no user (test mode)');
+      return;
+    }
+
+    const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+
+    console.log('[checkAnswer] inserting session...', { userId: user.id, word: currentPuzzle.word, timeTaken, attempts: newAttempts });
+
+    // Insert session (defensive: remove .select() if your RLS blocks it)
+    let sessionInsert = null;
+    let insertError = null;
+    try {
+      const result = await supabase
+        .from('game_sessions')
+        .insert({
+          user_id: user.id,
+          puzzle_word: currentPuzzle.word,
+          difficulty: currentPuzzle.difficulty,
+          category: currentPuzzle.category,
+          time_taken: timeTaken,
+          attempts: newAttempts,
+          solved: true
+        })
+        .select()
+        .single();
+      sessionInsert = result.data;
+      insertError = result.error;
+    } catch (e) {
+      console.error('[checkAnswer] insert threw', e);
+      insertError = e;
+    }
+
+    if (insertError) {
+      console.error('[checkAnswer] insert error', insertError);
+      // continue with fallback but don't block
+    } else {
+      console.log('[checkAnswer] insert success', sessionInsert);
+      setGameSessionId(sessionInsert?.id ?? '');
+    }
+
+    // Call the edge function. Different SDKs return different shapes; handle them all.
+    console.log('[checkAnswer] invoking function puzzle-ai-analysis', { sessionId: sessionInsert?.id ?? null });
+    const fnResult = await supabase.functions.invoke('puzzle-ai-analysis', {
+      body: {
+        gameSessionId: sessionInsert?.id ?? null,
+        timeTaken,
+        attempts: newAttempts,
+        difficulty: currentPuzzle.difficulty,
+        category: currentPuzzle.category
+      }
+    }).catch(e => {
+      console.error('[checkAnswer] function invoke threw', e);
+      return { error: e, data: null };
+    });
+
+    // If the SDK returned an error-like object
+    if ((fnResult as any)?.error) {
+      console.error('[checkAnswer] function returned error', (fnResult as any).error);
+      showFallbackReport('function error');
+      await loadGameStats().catch(() => {});
+      return;
+    }
+
+    // Defensive parse: support Response, string, object with body, or direct object
+    let parsed: any = (fnResult as any)?.data ?? fnResult;
+    try {
+      // If it's a Fetch Response-like object
+      if (parsed && typeof parsed === 'object' && typeof parsed.text === 'function') {
+        const txt = await parsed.text();
+        parsed = txt ? JSON.parse(txt) : {};
+      } else if (typeof parsed === 'string') {
+        parsed = parsed ? JSON.parse(parsed) : {};
+      } else if (parsed?.body && typeof parsed.body === 'string') {
+        parsed = JSON.parse(parsed.body);
+      }
+    } catch (parseErr) {
+      console.warn('[checkAnswer] parsing function response failed', parseErr);
+      // fallback continues below
+    }
+
+    console.log('[checkAnswer] function parsed result', parsed);
+
+    // Extract report and analysis safely
+    const report = parsed?.report ?? parsed;
+    const analysis = parsed?.analysis ?? parsed?.analysis ?? null;
+
+    if (!report || typeof report !== 'object') {
+      // If something unexpected came back, use fallback but try to include hints
+      showFallbackReport('unexpected function response');
+    } else {
+      // Good path: set report and unlock badges if any
+      setStressReport({
+        stress_level: report.stress_level ?? 'moderate',
+        weekly_score: Number(report.weekly_score ?? 75),
+        coping_tip: report.coping_tip ?? 'Good job! Keep breathing.',
+        ai_analysis: report.ai_analysis ?? analysis?.summary ?? JSON.stringify(report).slice(0, 200),
+        badges: report.badges ?? analysis?.suggestedBadges ?? []
+      });
+
+      // Try to unlock suggested badges (if available)
+      try {
+        const badges = (report.badges ?? analysis?.suggestedBadges) ?? [];
+        if (Array.isArray(badges) && badges.length) {
+          await checkAndUnlockAchievements(badges, timeTaken, newAttempts);
+        }
+      } catch (e) {
+        console.warn('[checkAnswer] unlocking badges failed', e);
+      }
+
+      // Finally show the report
+      setTimeout(() => setShowReport(true), 300);
+    }
+
+    // reload stats, but don't block UI if it fails
+    await loadGameStats().catch(e => console.warn('[checkAnswer] loadGameStats failed', e));
+
+  } catch (err) {
+    console.error('[checkAnswer] unexpected error', err);
+    showFallbackReport(String(err));
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const continueGame = () => {
     setShowReport(false);
@@ -289,7 +363,7 @@ export const WordPuzzleGame = () => {
             <p className="text-lg text-muted-foreground mb-8">
               Solve word puzzles to unlock personalized mental wellness insights
             </p>
-            
+
             <Card className="mb-8 bg-gradient-to-br from-primary/5 to-soul/5">
               <CardContent className="p-8">
                 <div className="grid md:grid-cols-3 gap-6 text-center">
@@ -311,7 +385,7 @@ export const WordPuzzleGame = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             {gameStats.total_puzzles_solved > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="text-center">
@@ -332,7 +406,7 @@ export const WordPuzzleGame = () => {
                 </div>
               </div>
             )}
-            
+
             <Button onClick={startGame} size="lg" className="text-lg px-8">
               <Brain className="w-5 h-5 mr-2" />
               {gameStats.total_puzzles_solved > 0 ? 'Continue Playing' : 'Start Playing'}
@@ -366,9 +440,9 @@ export const WordPuzzleGame = () => {
                   <div className={`text-4xl font-bold ${getStressColor(stressReport.stress_level)}`}>
                     {stressReport.stress_level.toUpperCase()}
                   </div>
-                  <Progress 
-                    value={stressReport.stress_level === 'low' ? 25 : stressReport.stress_level === 'moderate' ? 60 : 85} 
-                    className="mt-4" 
+                  <Progress
+                    value={stressReport.stress_level === 'low' ? 25 : stressReport.stress_level === 'moderate' ? 60 : 85}
+                    className="mt-4"
                   />
                 </div>
               </CardContent>
@@ -497,7 +571,7 @@ export const WordPuzzleGame = () => {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       placeholder="Your answer..."
                       className="flex-1 px-4 py-2 border rounded-lg text-center text-lg font-semibold tracking-wide"
-                      onKeyPress={(e) => e.key === 'Enter' && !isLoading && checkAnswer()}
+                      onKeyDown={(e) => e.key === 'Enter' && !isLoading && checkAnswer()}
                       disabled={isLoading}
                     />
                   </div>
@@ -513,7 +587,7 @@ export const WordPuzzleGame = () => {
                       )}
                     </Button>
                     <Button
-                      onClick={() => setCurrentPuzzle(prev => prev ? {...prev, scrambled: scrambleWord(prev.word)} : null)}
+                      onClick={() => setCurrentPuzzle(prev => prev ? { ...prev, scrambled: scrambleWord(prev.word) } : null)}
                       variant="outline"
                       size="lg"
                       disabled={isLoading}
